@@ -71,7 +71,7 @@
 					'</style>');
 				base.$head.append(base.$printStyle);
 			});
-			
+
 			base.$clonedHeader.find("input, select").attr("disabled", true);
 
 			base.updateWidth();
@@ -162,11 +162,11 @@
 					}
 
 					if (scrolledPastTop && notScrolledPastBottom) {
-						newLeft = offset.left - scrollLeft + base.options.leftOffset;
+						newLeft = offset.left + base.options.leftOffset;
 						base.$originalHeader.css({
 							'position': 'fixed',
 							'margin-top': base.options.marginTop,
-                                                        'top': 0,
+							'top': ,
 							'left': newLeft,
 							'z-index': base.options.zIndex
 						});
