@@ -166,7 +166,7 @@
 						base.$originalHeader.css({
 							'position': 'fixed',
 							'margin-top': base.options.marginTop,
-							'top': ,
+							'top': newTopOffset,
 							'left': newLeft,
 							'z-index': base.options.zIndex
 						});
