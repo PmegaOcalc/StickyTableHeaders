@@ -16,7 +16,7 @@
 			scrollableArea: window,
 			cacheHeaderHeight: false,
 			cacheHeaderWidth: false,
-			cacheClippingContainerWidth: true,
+			cacheClippingContainerWidth: false,
 			zIndex: 3,
 			clippingContainerId: null,
 			dynamicTopOffset: function() { return 0; }
