@@ -14,6 +14,10 @@
 			objHead: 'head',
 			objWindow: window,
 			scrollableArea: window,
+			setStylesOnce: false,
+			cacheHeights:  true,
+			flushHeightAfter: 0,
+			flushHeightEvery: 5000,
 			cacheHeaderHeight: false,
 			cacheHeaderWidth: false,
 			cacheClippingContainerWidth: false,
@@ -28,9 +32,11 @@
 		var base = this;
 
 		// Access to jQuery and DOM versions of element
-		base.$el = $(el);
-		base.el = el;
-		base.id = id++;
+		base.$el  = $(el);
+		base.$els = [];
+		base.el   = el;
+		base.id   = id++;
+		base.heights = [];
 
 		// Listen for destroyed, call teardown
 		base.$el.bind('destroyed',
@@ -51,11 +57,19 @@
 		base.leftOffset = null;
 		base.topOffset = null;
 
+		base.resetHeights = function() {
+			base.$el.each(function (idx, elem) {
+				base.heights[idx] = {table : null, cHeader : null};
+			});
+		}
+		base.delayedReset = $.noop;
+
 		base.init = function () {
 			base.setOptions(options);
 
-			base.$el.each(function () {
+			base.$el.each(function (idx, elem) {
 				var $this = $(this);
+				base.$els[idx] = $this;
 
 				// remove padding on <table> to fix issue #7
 				$this.css('padding', 0);
@@ -81,10 +95,23 @@
 
 			base.$clonedHeader.find("input, select").attr("disabled", true);
 
-			base.toggleHeaders();
+			base.toggleHeaders({type:'init'});
 			base.updateWidth();
 			base.updateHeaderCssPropertyClip();
 			base.bind();
+			if (base.options.cacheHeights && base.options.flushHeightAfter)
+				setTimeout(base.resetHeights, base.options.flushHeightAfter);
+			if (base.options.cacheHeights && base.options.flushHeightEvery)
+				base.delayedReset = (function(func, every) {
+					var timeout = 0;
+					return function() {
+							if (timeout)
+								return false;
+ 							var res = func();
+							timeout = setTimeout(function(){ timeout = 0; }, every);
+							return res;
+						}
+				})(base.resetHeights, base.options.flushHeightEvery);
 		};
 
 		base.changeClonedHeaderIds = function($clonedHeader) {
@@ -138,20 +165,28 @@
 
 		// We debounce the functions bound to the scroll and resize events
 		base.debounce = function (fn, delay) {
-			var timer = null;
 			return function () {
 				var context = this, args = arguments;
-				clearTimeout(timer);
-				timer = setTimeout(function () {
-					fn.apply(context, args);
-				}, delay);
+				fn.apply(context, args);
 			};
 		};
 
-		base.toggleHeaders = function () {
+		base.getCached = function($elem, what, idx, key)
+		{
+			if (base[what + 's'][idx][key])
+				return base[what + 's'][idx][key];
+			else
+				return base[what + 's'][idx][key] = $elem[what]();
+		};
+
+		base.toggleHeaders = function (ev) {
+			if ('scroll' == ev.type)
+				base.delayedReset();
+			else
+				base.resetHeights();
 			if (base.$el) {
-				base.$el.each(function () {
-					var $this = $(this),
+				base.$el.each(function (idx, elem) {
+					var $this = base.$els[idx],
 						dynamicTopOffset = base.options.dynamicTopOffset(),
 						newTopOffset = dynamicTopOffset + (base.isWindowScrolling ? (
 									isNaN(base.options.fixedOffset) ?
@@ -174,28 +209,48 @@
 					if (scrolledPastTop) {
 						headerHeight = base.getHeaderHeight();
 						notScrolledPastBottom = (base.isWindowScrolling ? scrollTop : 0) <
-							(offset.top + $this.height() - headerHeight - (base.isWindowScrolling ? 0 : newTopOffset));
+						(
+								offset.top +
+								(
+									base.options.cacheHeights && ev /* Filling cache only when scrolling */ ?
+
+											base.getCached($this, 'height', idx, 'table') :
+											$this.height()
+								) -
+								(
+									base.options.cacheHeights && ev ?
+											base.getCached(base.$clonedHeader, 'height', idx, 'cHeader') :
+											base.$clonedHeader.height()
+								) -
+								(base.isWindowScrolling ? 0 : newTopOffset)
+							);
 					}
 
 					if (scrolledPastTop && notScrolledPastBottom) {
 						base.leftOffset = offset.left - scrollLeft + base.options.leftOffset;
 						base.topOffset = newTopOffset;
-						base.$originalHeader.css({
-							'position': 'fixed',
-							'margin-top': base.options.marginTop,
-							'top': base.topOffset - (base.isWindowScrolling ? 0 : base.$window.scrollTop()),
-							'left': base.leftOffset,
-							'z-index': base.options.zIndex
-						});
-						base.$clonedHeader.css('display', '');
+						var doSet = !base.options.setStylesOnce || !base.isSticky || base.leftOffset != base.options.leftOffset;
+						if (doSet) {
+
+							base.$originalHeader.css({
+								'position': 'fixed',
+								'margin-top': base.options.marginTop,
+								'top': base.topOffset - (base.isWindowScrolling ? 0 : base.$window.scrollTop()),
+								'left': base.leftOffset,
+								'z-index': base.options.zIndex
+							});
+							base.$clonedHeader.css('display', '');
+							base.updateHeaderCssPropertyClip();
+						}
 						if (!base.isSticky) {
 							base.isSticky = true;
 							// make sure the width is correct: the user might have resized the browser while in static mode
 							base.updateWidth();
 							$this.trigger('enabledStickiness.' + name);
 						}
-						base.setPositionValues();
-						base.updateHeaderCssPropertyClip();
+						if (doSet) {
+							base.setPositionValues();
+						}
 					} else if (base.isSticky) {
 						base.$originalHeader.css('position', 'static');
 						base.$clonedHeader.css('display', 'none');
@@ -224,6 +279,7 @@
 		}, 0);
 
 		base.updateWidth = function () {
+			console.log('updating width')
 			if (!base.isSticky) {
 				return;
 			}
@@ -330,7 +386,7 @@
 		};
 
 		base.getHeaderHeight = function() {
-			 return base.options.cacheHeaderHeight ? base.cachedHeaderHeight : base.$clonedHeader.height();
+			 return base.options.cacheHeaderHeight ? base.cachedHeaderHeight : base.$clonedHeader.height() + 2; // +2 for border
 		}
 
 		base.getHeaderWidth = function() {
@@ -353,7 +409,7 @@
 			base.unbind();
 			base.bind();
 			base.updateWidth();
-			base.toggleHeaders();
+			base.toggleHeaders({type:'update'});
 		};
 
 		// Run initializer
