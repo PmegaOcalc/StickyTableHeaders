@@ -97,6 +97,15 @@
 
 			base.toggleHeaders({type:'init'});
 			base.updateWidth();
+			
+			angular.element( base.$scrollableArea ).on('scroll', function() {
+				base.updateWidth();
+			});
+
+			angular.element( window ).resize(function() {
+				base.updateWidth();
+	    		});
+			
 			base.updateHeaderCssPropertyClip();
 			base.bind();
 			if (base.options.cacheHeights && base.options.flushHeightAfter)
