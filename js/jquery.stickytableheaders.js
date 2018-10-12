@@ -98,12 +98,26 @@
 			base.toggleHeaders({type:'init'});
 			base.updateWidth();
 			
+			var updatingWidth = false;
+
 			angular.element( base.$scrollableArea ).on('scroll', function() {
-				base.updateWidth();
+				if (updatingWidth === false) {
+					updatingWidth = true;
+					setTimeout(function(){
+						updatingWidth = false;
+						base.updateWidth();
+					},650);
+				}
 			});
 
 			angular.element( window ).resize(function() {
-				base.updateWidth();
+				if (updatingWidth === false) {
+					updatingWidth = true;
+					setTimeout(function(){
+						updatingWidth = false;
+						base.updateWidth();
+					},650);
+				}
 	    		});
 			
 			base.updateHeaderCssPropertyClip();
