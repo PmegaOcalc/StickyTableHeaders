@@ -302,7 +302,6 @@
 		}, 0);
 
 		base.updateWidth = function () {
-			console.log('updating width')
 			if (!base.isSticky) {
 				return;
 			}
