@@ -97,7 +97,7 @@
 
 			base.toggleHeaders({type:'init'});
 			base.updateWidth();
-			
+
 			var updatingWidth = false;
 
 			angular.element( base.$scrollableArea ).on('scroll', function() {
@@ -119,7 +119,7 @@
 					},650);
 				}
 	    		});
-			
+
 			base.updateHeaderCssPropertyClip();
 			base.bind();
 			if (base.options.cacheHeights && base.options.flushHeightAfter)
@@ -302,7 +302,7 @@
 		}, 0);
 
 		base.updateWidth = function () {
-			console.log('updating width')
+
 			if (!base.isSticky) {
 				return;
 			}
